@@ -1,0 +1,30 @@
+# https://www.rabbitmq.com/tutorials/tutorial-five-elixir.html
+
+# Topics
+
+# Same message is delivered via routing only to interested consumers
+
+# Note that only debug/info/warning levels are supported :)
+
+version: 0.1.0
+
+workers:
+  - name: topic_animal_producer_0
+    role: producer
+    type: random_animal
+    settings:
+      # in milliseconds
+      interval: 1000
+  - name: topic_logger_0
+    role: consumer
+    type: topics_logger
+    settings:
+      topics:
+        - "*.orange.*"
+  - name: topic_logger_1
+    role: consumer
+    type: topics_logger
+    settings:
+      topics:
+        - "*.*.rabbit"
+        - "lazy.#"
