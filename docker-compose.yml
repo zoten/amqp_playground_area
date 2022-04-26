@@ -1,0 +1,16 @@
+version: "3.9"
+services:
+  rabbit0:
+    image: rabbitmq:3.9.15-management-alpine
+    container_name: rabbitmq0
+    environment:
+      - RABBITMQ_DEFAULT_USER=user
+      - RABBITMQ_DEFAULT_PASS=password
+      - RABBITMQ_NODENAME=rabbit0@rabbit0
+    ports:
+        - 5672:5672
+        # UI
+        - 15672:15672
+    volumes:
+        - "./data/rabbitmq0/data/:/var/lib/rabbitmq/"
+        - "./data/rabbitmq0/log/:/var/log/rabbitmq"

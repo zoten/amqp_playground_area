@@ -29,3 +29,4 @@ apa-*.tar
 .elixir_ls/
 .vscode
 **/*.code-workspace
+data/
