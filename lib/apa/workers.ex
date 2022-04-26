@@ -16,6 +16,9 @@ defmodule Apa.Workers do
   @producer_type_routing_logger "routing_logger"
   @producer_type_random_animal "random_animal"
 
+  @rpc_client_type_rpc_echo "rpc_echo"
+  @rpc_server_type_rpc_echo "rpc_echo"
+
   @spec get_consumer_module(map) ::
           Apa.Workers.IntegerPrinterConsumer
           | Apa.Workers.LoggerConsumer
@@ -39,4 +42,10 @@ defmodule Apa.Workers do
   def get_producer_module(%{"type" => @producer_type_incremental_integer}), do: Apa.Workers.IncrementalIntegerProducer
   def get_producer_module(%{"type" => @producer_type_random_animal}), do: Apa.Workers.TopicAnimalProducer
   def get_producer_module(config), do: raise("Unsupported producer config [#{inspect(config)}]")
+
+  @spec get_rpc_client_module(map) :: Apa.Workers.RpcEchoClient
+  def get_rpc_client_module(%{"type" => @rpc_client_type_rpc_echo}), do: Apa.Workers.RpcEchoClient
+
+  @spec get_rpc_server_module(map) :: Apa.Workers.RpcEchoServer
+  def get_rpc_server_module(%{"type" => @rpc_server_type_rpc_echo}), do: Apa.Workers.RpcEchoServer
 end

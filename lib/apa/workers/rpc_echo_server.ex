@@ -1,6 +1,6 @@
-defmodule Apa.Workers.IntegerPrinterConsumer do
+defmodule Apa.Workers.RpcEchoServer do
   @moduledoc """
-  Basic consumer that simply prints out strings interpreted as integers
+  RPC Server that waits a random time and echoes back given value
   """
 
   use GenServer
@@ -10,9 +10,15 @@ defmodule Apa.Workers.IntegerPrinterConsumer do
 
   require Logger
 
-  @default_queue "default"
+  @default_interval_ms 1_000
+  @default_min_ms 1
+  @default_max_ms 5_000
+  @default_queue "rpc_queue"
 
   defstruct name: nil,
+            interval: @default_interval_ms,
+            min: @default_min_ms,
+            max: @default_max_ms,
             # AMQP state
             user: "user",
             password: "password",
@@ -27,7 +33,7 @@ defmodule Apa.Workers.IntegerPrinterConsumer do
 
   @spec init(any) :: {:ok, any}
   def init(config) do
-    Logger.notice("Initializing IntegerPrinterConsumer")
+    Logger.notice("Initializing RpcEchoServer")
     Logger.debug("config [#{inspect(config)}]")
 
     state = parse_config(config)
@@ -51,16 +57,20 @@ defmodule Apa.Workers.IntegerPrinterConsumer do
     {:noreply, state}
   end
 
-  def handle_info({:basic_deliver, payload, %{delivery_tag: tag, redelivered: redelivered}}, state) do
+  def handle_info(
+        {:basic_deliver, payload,
+         %{reply_to: reply_to, correlation_id: correlation_id, delivery_tag: tag, redelivered: redelivered}},
+        state
+      ) do
     # You might want to run payload consumption in separate Tasks in production
-    consume(state, tag, redelivered, payload)
+    consume(state, tag, redelivered, payload, reply_to, correlation_id)
     {:noreply, state}
   end
 
   # Privates
 
   # Setup of amqp connection
-  defp setup_amqp(%IntegerPrinterConsumer{queue: queue, user: user, password: password} = state) do
+  defp setup_amqp(%RpcEchoServer{queue: queue, user: user, password: password} = state) do
     {:ok, connection} =
       AMQP.Connection.open(
         username: user,
@@ -72,11 +82,16 @@ defmodule Apa.Workers.IntegerPrinterConsumer do
     Logger.info("Declaring queue [#{queue}]")
     AMQP.Queue.declare(channel, queue)
 
+    # We might want to run more than one server process.
+    # In order to spread the load equally over multiple servers we need
+    # to set the prefetch_count setting.
+    AMQP.Basic.qos(channel, prefetch_count: 1)
+
     # Register the GenServer process as a consumer
     {:ok, _consumer_tag} = Basic.consume(channel, queue)
 
     {:ok,
-     %IntegerPrinterConsumer{
+     %RpcEchoServer{
        state
        | connection: connection,
          channel: channel
@@ -85,31 +100,45 @@ defmodule Apa.Workers.IntegerPrinterConsumer do
 
   # config -> state
   defp parse_config(%{} = config) do
-    %IntegerPrinterConsumer{
+    %RpcEchoServer{
       name: Map.get(config, "name", nil)
+    }
+    |> parse_settings(config)
+  end
+
+  defp parse_settings(%RpcEchoServer{} = partial_producer, %{"settings" => settings} = _config) do
+    %RpcEchoServer{
+      partial_producer
+      | interval: Map.get(settings, "interval", @default_interval_ms),
+        min: Map.get(settings, "min", @default_min_ms),
+        max: Map.get(settings, "max", @default_max_ms)
     }
   end
 
   defp consume(
-         %IntegerPrinterConsumer{name: name, channel: channel} = _state,
+         %RpcEchoServer{name: name, channel: channel, min: min, max: max} = _state,
          tag,
-         redelivered,
-         payload
+         _redelivered,
+         payload,
+         reply_to,
+         correlation_id
        ) do
-    number = String.to_integer(payload)
+    sleep = Enum.random(min..max)
+    Logger.info("Consumer [#{name}] gonna sleep [#{sleep}]ms before answering")
+    :timer.sleep(sleep)
 
-    Logger.info("Consumer [#{name}] consumed number [#{number}]")
+    AMQP.Basic.publish(
+      channel,
+      "",
+      reply_to,
+      "#{payload}",
+      correlation_id: correlation_id
+    )
+
+    Logger.info(
+      "Consumer [#{name}] consumed message [#{payload}] -> [#{inspect(reply_to)}] correlation_id [#{correlation_id}]"
+    )
+
     Basic.ack(channel, tag)
-  rescue
-    # Requeue unless it's a redelivered message.
-    # This means we will retry consuming a message once in case of exception
-    # before we give up and have it moved to the error queue
-    #
-    # You might also want to catch :exit signal in production code.
-    # Make sure you call ack, nack or reject otherwise consumer will stop
-    # receiving messages.
-    exception ->
-      :ok = Basic.reject(channel, tag, requeue: not redelivered)
-      Logger.warning("Error [#{inspect(exception)}] converting [#{payload}] to integer")
   end
 end

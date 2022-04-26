@@ -85,6 +85,18 @@ defmodule Apa.Bootstrapper do
     :ok
   end
 
+  defp start_worker(%{"role" => "rpc_server"} = worker_configuration) do
+    module = Apa.Workers.get_rpc_server_module(worker_configuration)
+    ApaSupervisor.start_worker(module, worker_configuration)
+    :ok
+  end
+
+  defp start_worker(%{"role" => "rpc_client"} = worker_configuration) do
+    module = Apa.Workers.get_rpc_client_module(worker_configuration)
+    ApaSupervisor.start_worker(module, worker_configuration)
+    :ok
+  end
+
   defp start_worker(%{} = worker_configuration) do
     Logger.error("Failed to start unknown worker [#{inspect(worker_configuration)}]")
     {:error, :unknown_worker_type}
