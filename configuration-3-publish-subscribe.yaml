@@ -1,0 +1,32 @@
+# https://www.rabbitmq.com/tutorials/tutorial-three-elixir.html
+
+# Publish/Subscribe pattern
+
+# A same message is delivered to multiple consumers
+# You should see that logger_0 logs all messages, while logger_1 considers
+# only warning messages.
+
+# Note that only debug/info/warning levels are supported :)
+
+version: 0.1.0
+
+workers:
+  # worker name
+  - name: log_producer_0
+    role: producer
+    type: logger
+    settings:
+      # in milliseconds
+      interval: 1000
+      min: 1
+      max: 5000
+  - name: logger_0
+    role: consumer
+    type: logger
+    settings:
+      level: debug
+  - name: logger_1
+    role: consumer
+    type: logger
+    settings:
+      level: warning

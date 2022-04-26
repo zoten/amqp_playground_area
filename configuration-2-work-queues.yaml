@@ -1,0 +1,26 @@
+# https://www.rabbitmq.com/tutorials/tutorial-two-elixir.html
+
+# Competing consumers pattern
+# The assumption is that each task is delivered to exactly one worker
+
+version: 0.1.0
+
+workers:
+  # worker name
+  - name: random_integer_producer_0
+    role: producer
+    type: random_time_seq
+    settings:
+      # in milliseconds
+      interval: 1000
+      min: 1
+      max: 5000
+  - name: time_consumer_0
+    role: consumer
+    type: time_consumer
+  - name: time_consumer_1
+    role: consumer
+    type: time_consumer
+  - name: time_consumer_2
+    role: consumer
+    type: time_consumer

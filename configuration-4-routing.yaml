@@ -1,0 +1,31 @@
+# https://www.rabbitmq.com/tutorials/tutorial-four-elixir.html
+
+# Routing
+
+# Same message is delivered via routing only to interested consumers
+
+# Note that only debug/info/warning levels are supported :)
+
+version: 0.1.0
+
+workers:
+  # worker name
+  - name: routing_log_producer_0
+    role: producer
+    type: routing_logger
+    settings:
+      # in milliseconds
+      interval: 1000
+  - name: routing_logger_0
+    role: consumer
+    type: routing_logger
+    settings:
+      levels:
+        - info
+  - name: routing_logger_1
+    role: consumer
+    type: routing_logger
+    settings:
+      levels:
+        - debug
+        - warning

@@ -1,0 +1,15 @@
+# https://www.rabbitmq.com/tutorials/tutorial-one-elixir.html
+
+version: 0.1.0
+
+workers:
+  # worker name
+  - name: incremental_integer_producer_0
+    role: producer
+    type: incremental_integer
+    settings:
+      # in milliseconds
+      interval: 1000
+  - name: printer_consumer_0
+    role: consumer
+    type: integer_printer
